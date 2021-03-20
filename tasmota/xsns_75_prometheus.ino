@@ -1,7 +1,7 @@
 /*
   xsns_75_prometheus.ino - Web based information for Tasmota
 
-  Copyright (C) 2020  Theo Arends
+  Copyright (C) 2021  Theo Arends
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -57,13 +57,14 @@ String FormatMetricName(const char *metric) {  // cleanup spaces and uppercases 
   String formatted = metric;
   formatted.toLowerCase();
   formatted.replace(" ", "_");
+  formatted.replace(".", "_");
   return formatted;
 }
 
 void HandleMetrics(void) {
   if (!HttpCheckPriviledgedAccess()) { return; }
 
-  AddLog_P(LOG_LEVEL_DEBUG, PSTR(D_LOG_HTTP "Prometheus"));
+  AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_HTTP "Prometheus"));
 
   WSContentBegin(200, CT_PLAIN);
 

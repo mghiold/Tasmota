@@ -1,7 +1,7 @@
 /*
   xsns_80_mfrc522.ino - Support for MFRC522 (SPI) NFC Tag Reader on Tasmota
 
-  Copyright (C) 2020  Theo Arends
+  Copyright (C) 2021  Theo Arends
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * Connections:
  * MFRC522  ESP8266         Tasmota
  * -------  --------------  ----------
- *  SDA     GPIO0..5,15,16  SPI CS
+ *  SDA     GPIO0..5,15,16  RC522 CS
  *  SCK     GPIO14          SPI CLK
  *  MOSI    GPIO13          SPI MOSI
  *  MISO    GPIO12          SPI MISO
@@ -98,7 +98,7 @@ void RC522ScanForTag(void) {
 }
 
 void RC522Init(void) {
-  if (PinUsed(GPIO_RC522_CS) && PinUsed(GPIO_RC522_RST)) {
+  if (PinUsed(GPIO_RC522_CS) && PinUsed(GPIO_RC522_RST) && TasmotaGlobal.spi_enabled) {
     Mfrc522 = new MFRC522(Pin(GPIO_RC522_CS), Pin(GPIO_RC522_RST));
     SPI.begin();
     Mfrc522->PCD_Init();
@@ -113,7 +113,7 @@ void RC522Init(void) {
       }
       uint8_t empty_uid[4] = { 0 };
       ToHex_P((unsigned char*)empty_uid, sizeof(empty_uid), Rc522.uids, sizeof(Rc522.uids));
-      AddLog_P(LOG_LEVEL_INFO, PSTR("MFR: RC522 Rfid Reader detected %s"), ver);
+      AddLog(LOG_LEVEL_INFO, PSTR("MFR: RC522 Rfid Reader detected %s"), ver);
       Rc522.present = true;
 //    }
 //    Mfrc522->PCD_Init();       // Re-init as SelfTest blows init
@@ -125,6 +125,36 @@ void RC522Show(void) {
   WSContentSend_PD(PSTR("{s}RC522 UID{m}%s{e}"), Rc522.uids);
 }
 #endif  // USE_WEBSERVER
+
+/*********************************************************************************************\
+ * Supported commands for Sensor80:
+ *
+ * Sensor80 1        - Show antenna gain
+ * Sensor80 1 <gain> - Set antenna gain 0..7 (default 4)
+\*********************************************************************************************/
+
+bool RC522Command(void) {
+  bool serviced = true;
+  char argument[XdrvMailbox.data_len];
+
+  for (uint32_t ca = 0; ca < XdrvMailbox.data_len; ca++) {
+    if ((' ' == XdrvMailbox.data[ca]) || ('=' == XdrvMailbox.data[ca])) { XdrvMailbox.data[ca] = ','; }
+  }
+
+  switch (XdrvMailbox.payload) {
+    case 1:  // Antenna gain
+      uint8_t gain;
+      if (strchr(XdrvMailbox.data, ',') != nullptr) {
+        gain = strtol(ArgV(argument, 2), nullptr, 10) & 0x7;
+        Mfrc522->PCD_SetAntennaGain(gain << 4);
+      }
+      gain = Mfrc522->PCD_GetAntennaGain() >> 4;  // 0..7
+      Response_P(PSTR("{\"Sensor80\":{\"Gain\":%d}}"), gain);
+      break;
+  }
+
+  return serviced;
+}
 
 /*********************************************************************************************\
  * Interface
@@ -143,6 +173,11 @@ bool Xsns80(uint8_t function) {
           Rc522.scantimer--;
         } else {
           RC522ScanForTag();
+        }
+        break;
+      case FUNC_COMMAND_SENSOR:
+        if (XSNS_80 == XdrvMailbox.index) {
+          result = RC522Command();
         }
         break;
 #ifdef USE_WEBSERVER

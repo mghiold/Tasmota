@@ -1,7 +1,7 @@
 /*
   xdrv_23_zigbee_1z_libs.ino - zigbee support for Tasmota, JSON replacement libs
 
-  Copyright (C) 2020  Theo Arends and Stephan Hadinger
+  Copyright (C) 2021  Theo Arends and Stephan Hadinger
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -45,9 +45,9 @@ int strcmp_PP(const char *p1, const char *p2) {
 }
 
 /*********************************************************************************************\
- * 
+ *
  * Variables for Rules from last Zigbee message received
- * 
+ *
 \*********************************************************************************************/
 
 typedef struct Z_LastMessageVars {
@@ -65,9 +65,9 @@ uint16_t Z_GetLastCluster(void) { return gZbLastMessage.cluster; }
 uint8_t  Z_GetLastEndpoint(void) { return gZbLastMessage.endpoint; }
 
 /*********************************************************************************************\
- * 
+ *
  * Class for single attribute
- * 
+ *
 \*********************************************************************************************/
 
 enum class Za_type : uint8_t {
@@ -126,7 +126,7 @@ public:
     attr_type(0xFF),
     attr_multiplier(1)
     {};
-  
+
   Z_attribute(const Z_attribute & rhs) {
     deepCopy(rhs);
   }
@@ -191,6 +191,9 @@ public:
   int32_t getInt(void) const;
   uint32_t getUInt(void) const;
   bool getBool(void) const;
+  // optimistically try to get any value as literal or in string - double to not lose precision for 32 bits
+  double getOptimisticDouble(void) const;
+  //
   const SBuffer * getRaw(void) const;
 
   // always return a point to a string, if not defined then empty string.
@@ -213,9 +216,9 @@ protected:
 };
 
 /*********************************************************************************************\
- * 
+ *
  * Class for attribute ordered list
- * 
+ *
 \*********************************************************************************************/
 
 
@@ -309,9 +312,9 @@ Z_attribute & Z_attribute_list::addAttributePMEM(const char * name) {
 }
 
 /*********************************************************************************************\
- * 
+ *
  * Implementation for Z_attribute
- * 
+ *
 \*********************************************************************************************/
 
 // free any allocated memoruy for keys
@@ -399,9 +402,7 @@ void Z_attribute::setHex32(uint32_t _val) {
 }
 void Z_attribute::setHex64(uint64_t _val) {
   char hex[22];
-  hex[0] = '0';   // prefix with '0x'
-  hex[1] = 'x';
-  Uint64toHex(_val, &hex[2], 64);
+  ext_snprintf_P(hex, sizeof(hex), PSTR("0x%_X"), &_val);
   setStr(hex);
 }
 
@@ -439,6 +440,17 @@ JsonGeneratorArray & Z_attribute::newJsonArray(void) {
 }
 
 // get num values
+double Z_attribute::getOptimisticDouble(void) const {
+  switch (type) {
+    case Za_type::Za_bool:
+    case Za_type::Za_uint:    return (double) val.uval32;
+    case Za_type::Za_int:     return (double) val.ival32;
+    case Za_type::Za_float:   return (double) val.fval;
+    case Za_type::Za_str:     return JsonParserToken::json_strtof(val.sval);
+    default:                  return 0.0;
+  }
+}
+
 float Z_attribute::getFloat(void) const {
   switch (type) {
     case Za_type::Za_bool:
@@ -539,7 +551,7 @@ bool Z_attribute::equalsVal(const Z_attribute & attr2) const {
     if (val.uval32 != attr2.val.uval32) { return false; }
   } else if (type == Za_type::Za_raw) {
     // compare 2 Static buffers
-    return equalsSBuffer(val.bval, attr2.val.bval);
+    return SBuffer::equalsSBuffer(val.bval, attr2.val.bval);
   } else if (type == Za_type::Za_str) {
     // if (val_str_raw != attr2.val_str_raw) { return false; }
     if (strcmp_PP(val.sval, attr2.val.sval)) { return false; }
@@ -579,7 +591,7 @@ String Z_attribute::toString(bool prefix_comma) const {
   // value part
   switch (type) {
   case Za_type::Za_none:
-    res += "null";
+    res += F("null");
     break;
   case Za_type::Za_bool:
     res += val.uval32 ? F("true") : F("false");
@@ -638,7 +650,9 @@ String Z_attribute::toString(bool prefix_comma) const {
     if (val.arrval) {
       res += val.arrval->toString();
     } else {
-      res += "[]";
+      // res += '[';
+      // res += ']';
+      res += F("[]");
     }
     break;
   }
@@ -719,9 +733,9 @@ void Z_attribute::deepCopy(const Z_attribute & rhs) {
 }
 
 /*********************************************************************************************\
- * 
+ *
  * Implementation for Z_attribute_list
- * 
+ *
 \*********************************************************************************************/
 // add a cluster/attr_id attribute at the end of the list
 Z_attribute & Z_attribute_list::addAttribute(uint16_t cluster, uint16_t attr_id, uint8_t suffix) {

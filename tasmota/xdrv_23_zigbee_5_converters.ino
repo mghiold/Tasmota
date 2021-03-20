@@ -1,7 +1,7 @@
 /*
   xdrv_23_zigbee_converters.ino - zigbee support for Tasmota
 
-  Copyright (C) 2020  Theo Arends and Stephan Hadinger
+  Copyright (C) 2021  Theo Arends and Stephan Hadinger
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -140,14 +140,14 @@ const uint16_t Cx_cluster[] PROGMEM = {
 };
 
 uint16_t CxToCluster(uint8_t cx) {
-  if (cx < ARRAY_SIZE(Cx_cluster)) {
+  if (cx < nitems(Cx_cluster)) {
     return pgm_read_word(&Cx_cluster[cx]);
   }
   return 0xFFFF;
 }
 
 uint8_t ClusterToCx(uint16_t cluster) {
-  for (uint32_t i=0; i<ARRAY_SIZE(Cx_cluster); i++) {
+  for (uint32_t i=0; i<nitems(Cx_cluster); i++) {
     if (pgm_read_word(&Cx_cluster[i]) == cluster) {
       return i;
     }
@@ -170,7 +170,7 @@ const int8_t Cm_multiplier[] PROGMEM = {
 
 int8_t CmToMultiplier(uint8_t cm) {
   cm = cm & 0x0F;     // get only low nibble
-  if (cm < ARRAY_SIZE(Cm_multiplier)) {
+  if (cm < nitems(Cm_multiplier)) {
     return pgm_read_byte(&Cm_multiplier[cm]);
   }
   return 1;
@@ -195,6 +195,7 @@ const Z_AttributeConverter Z_PostProcess[] PROGMEM = {
   { Zoctstr,  Cx0000, 0x000A,  Z_(ProductCode),          Cm1, 0 },
   { Zstring,  Cx0000, 0x000B,  Z_(ProductURL),           Cm1, 0 },
   { Zstring,  Cx0000, 0x4000,  Z_(SWBuildID),            Cm1, 0 },
+  { Zuint8,   Cx0000, 0x4005,  Z_(MullerLightMode),      Cm1, 0 },
   // { Zunk,     Cx0000, 0xFFFF,  nullptr,                 Cm0, 0 },    // Remove all other values
   // Cmd 0x0A - Cluster 0x0000, attribute 0xFF01 - proprietary
   { Zmap8,    Cx0000, 0xFF01,  Z_(),                     Cm0, 0 },
@@ -667,7 +668,7 @@ typedef union ZCLHeaderFrameControl_t {
 const __FlashStringHelper* zigbeeFindAttributeByName(const char *command,
                                     uint16_t *cluster, uint16_t *attribute, int8_t *multiplier,
                                     uint8_t *zigbee_type = nullptr, Z_Data_Type *data_type = nullptr, uint8_t *map_offset = nullptr) {
-  for (uint32_t i = 0; i < ARRAY_SIZE(Z_PostProcess); i++) {
+  for (uint32_t i = 0; i < nitems(Z_PostProcess); i++) {
     const Z_AttributeConverter *converter = &Z_PostProcess[i];
     if (0 == pgm_read_word(&converter->name_offset)) { continue; }         // avoid strcasecmp_P() from crashing
     if (0 == strcasecmp_P(command, Z_strings + pgm_read_word(&converter->name_offset))) {
@@ -689,7 +690,7 @@ const __FlashStringHelper* zigbeeFindAttributeByName(const char *command,
 //
 const __FlashStringHelper* zigbeeFindAttributeById(uint16_t cluster, uint16_t attr_id,
                                       uint8_t *attr_type, int8_t *multiplier) {
-  for (uint32_t i = 0; i < ARRAY_SIZE(Z_PostProcess); i++) {
+  for (uint32_t i = 0; i < nitems(Z_PostProcess); i++) {
     const Z_AttributeConverter *converter = &Z_PostProcess[i];
     uint16_t conv_cluster = CxToCluster(pgm_read_byte(&converter->cluster_short));
     uint16_t conv_attr_id = pgm_read_word(&converter->attribute);
@@ -722,8 +723,6 @@ public:
 
 
   void log(void) {
-    char hex_char[_payload.len()*2+2];
-		ToHex_P((unsigned char*)_payload.getBuffer(), _payload.len(), hex_char, sizeof(hex_char));
     Response_P(PSTR("{\"" D_JSON_ZIGBEEZCL_RECEIVED "\":{"
                     "\"groupid\":%d," "\"clusterid\":\"0x%04X\"," "\"srcaddr\":\"0x%04X\","
                     "\"srcendpoint\":%d," "\"dstendpoint\":%d," "\"wasbroadcast\":%d,"
@@ -731,14 +730,14 @@ public:
                     "\"fc\":\"0x%02X\","
                     "\"frametype\":%d,\"direction\":%d,\"disableresp\":%d,"
                     "\"manuf\":\"0x%04X\",\"transact\":%d,"
-                    "\"cmdid\":\"0x%02X\",\"payload\":\"%s\"}}"),
+                    "\"cmdid\":\"0x%02X\",\"payload\":\"%_B\"}}"),
                     _groupaddr, _cluster_id, _srcaddr,
                     _srcendpoint, _dstendpoint, _wasbroadcast,
                     _linkquality, _securityuse, _seqnumber,
                     _frame_control,
                     _frame_control.b.frame_type, _frame_control.b.direction, _frame_control.b.disable_def_resp,
                     _manuf_code, _transact_seq, _cmd_id,
-                    hex_char);
+                    &_payload);
     if (Settings.flag3.tuya_serial_mqtt_publish) {
       MqttPublishPrefixTopicRulesProcess_P(TELE, PSTR(D_RSLT_SENSOR));
     } else {
@@ -868,7 +867,7 @@ uint8_t toPercentageCR2032(uint32_t voltage) {
 // Adds to buf:
 // - n bytes: value (typically between 1 and 4 bytes, or bigger for strings)
 // returns number of bytes of attribute, or <0 if error
-int32_t encodeSingleAttribute(class SBuffer &buf, double val_d, const char *val_str, uint8_t attrtype) {
+int32_t encodeSingleAttribute(SBuffer &buf, double val_d, const char *val_str, uint8_t attrtype) {
   uint32_t len = Z_getDatatypeLen(attrtype);    // pre-compute length, overloaded for variable length attributes
   uint32_t u32 = val_d;
   int32_t  i32 = val_d;
@@ -1185,6 +1184,10 @@ void ZCLFrame::parseReportAttributes(Z_attribute_list& attr_list) {
   uint32_t i = 0;
   uint32_t len = _payload.len();
 
+  if (ZCL_WRITE_ATTRIBUTES == getCmdId()) {
+    attr_list.addAttribute(PSTR("Command"), true).setStr(PSTR("Write"));
+  }
+
   while (len >= i + 3) {
     uint16_t attrid = _payload.get16(i);
     i += 2;
@@ -1206,23 +1209,19 @@ void ZCLFrame::parseReportAttributes(Z_attribute_list& attr_list) {
   // The sensor expects the coordinator to send a Default Response to acknowledge the attribute reporting
   if (0 == _frame_control.b.disable_def_resp) {
     // the device expects a default response
-    SBuffer buf(2);
-    buf.add8(_cmd_id);
-    buf.add8(0x00);   // Status = OK
-
-    ZigbeeZCLSend_Raw(ZigbeeZCLSendMessage({
-      _srcaddr,
-      0x0000,
-      _cluster_id,
-      _srcendpoint,
-      ZCL_DEFAULT_RESPONSE,
-      _manuf_code,
-      false /* not cluster specific */,
-      false /* noresponse */,
-      true /* direct no retry */,
-      _transact_seq,  /* zcl transaction id */
-      buf.getBuffer(), buf.len()
-    }));
+    ZCLMessage zcl(2);   // message is 2 bytes
+    zcl.shortaddr = _srcaddr;
+    zcl.cluster = _cluster_id;
+    zcl.endpoint = _srcendpoint;
+    zcl.cmd = ZCL_DEFAULT_RESPONSE;
+    zcl.manuf = _manuf_code;
+    zcl.clusterSpecific = false;  /* not cluster specific */
+    zcl.needResponse = false;     /* noresponse */
+    zcl.direct = true;            /* direct no retry */
+    zcl.setTransac(_transact_seq);
+    zcl.buf.add8(_cmd_id);
+    zcl.buf.add8(0);    // Status = OK
+    zigbeeZCLSendCmd(zcl);
   }
 }
 
@@ -1281,6 +1280,7 @@ void ZCLFrame::removeInvalidAttributes(Z_attribute_list& attr_list) {
 // Note: both function are now split to compute on extracted attributes
 //
 void ZCLFrame::computeSyntheticAttributes(Z_attribute_list& attr_list) {
+  const Z_Device & device = zigbee_devices.findShortAddr(_srcaddr);
   const char * model_c = zigbee_devices.getModelId(_srcaddr);  // null if unknown
   String modelId((char*) model_c);
   // scan through attributes and apply specific converters
@@ -1327,7 +1327,37 @@ void ZCLFrame::computeSyntheticAttributes(Z_attribute_list& attr_list) {
           }
         }
         break;
-      case 0x04030000:    // Pressure
+      case 0x03000000:    // Hue
+      case 0x03000001:    // Sat
+      case 0x03000003:    // X
+      case 0x03000004:    // Y
+        {                 // generate synthetic RGB
+          const Z_attribute * attr_rgb = attr_list.findAttribute(PSTR("RGB"));
+          if (attr_rgb == nullptr) {      // make sure we didn't already computed it
+            uint8_t brightness = 255;
+            if (device.valid()) {
+              const Z_Data_Light & light = device.data.find<Z_Data_Light>(_srcendpoint);
+              if ((&light != nullptr) && (light.validDimmer())) {
+                // Dimmer has a valid value
+                brightness = changeUIntScale(light.getDimmer(), 0, 254, 0, 255);   // range is 0..255
+              }
+            }
+
+            const Z_attribute * attr_hue = attr_list.findAttribute(0x0300, 0x0000);
+            const Z_attribute * attr_sat = attr_list.findAttribute(0x0300, 0x0001);
+            const Z_attribute * attr_x   = attr_list.findAttribute(0x0300, 0x0003);
+            const Z_attribute * attr_y   = attr_list.findAttribute(0x0300, 0x0004);
+            if (attr_hue && attr_sat) {
+              uint8_t sat = changeUIntScale(attr_sat->getUInt(), 0, 254, 0, 255);
+              uint16_t hue = changeUIntScale(attr_hue->getUInt(), 0, 254, 0, 360);
+              Z_Data_Light::toRGBAttributesHSB(attr_list, hue, sat, brightness);
+            } else if (attr_x && attr_y) {
+              Z_Data_Light::toRGBAttributesXYB(attr_list, attr_x->getUInt(), attr_y->getUInt(), brightness);
+            }
+          }
+        }
+        break;
+      case 0x04030000:    // SeaPressure
         {
           int16_t pressure = attr.getInt();
           int16_t pressure_sealevel = (pressure / FastPrecisePow(1.0 - ((float)Settings.altitude / 44330.0f), 5.255f)) - 21.6f;
@@ -1428,7 +1458,7 @@ void ZCLFrame::parseReadAttributes(Z_attribute_list& attr_list) {
     read_attr_ids[i/2] = attrid;
 
     // find the attribute name
-    for (uint32_t i = 0; i < ARRAY_SIZE(Z_PostProcess); i++) {
+    for (uint32_t i = 0; i < nitems(Z_PostProcess); i++) {
       const Z_AttributeConverter *converter = &Z_PostProcess[i];
       uint16_t conv_cluster = CxToCluster(pgm_read_byte(&converter->cluster_short));
       uint16_t conv_attribute = pgm_read_word(&converter->attribute);
@@ -1497,7 +1527,7 @@ void ZCLFrame::parseReadConfigAttributes(Z_attribute_list& attr_list) {
 
     // find the attribute name
     int8_t multiplier = 1;
-    for (uint32_t i = 0; i < ARRAY_SIZE(Z_PostProcess); i++) {
+    for (uint32_t i = 0; i < nitems(Z_PostProcess); i++) {
       const Z_AttributeConverter *converter = &Z_PostProcess[i];
       uint16_t conv_cluster = CxToCluster(pgm_read_byte(&converter->cluster_short));
       uint16_t conv_attribute = pgm_read_word(&converter->attribute);
@@ -1606,16 +1636,53 @@ void ZCLFrame::parseResponse(void) {
   parseResponse_inner(cmd, true, status);
 }
 
+/*********************************************************************************************\
+ * Callbacks
+\*********************************************************************************************/
+// Reset the debounce marker
+void Z_ResetDebounce(uint16_t shortaddr, uint16_t groupaddr, uint16_t cluster, uint8_t endpoint, uint32_t value) {
+  zigbee_devices.getShortAddr(shortaddr).debounce_endpoint = 0;
+}
+
 // Parse non-normalized attributes
 void ZCLFrame::parseClusterSpecificCommand(Z_attribute_list& attr_list) {
-  convertClusterSpecific(attr_list, _cluster_id, _cmd_id, _frame_control.b.direction, _srcaddr, _srcendpoint, _payload);
-  if (!Settings.flag5.zb_disable_autoquery) {
-  // read attributes unless disabled
-    if (!_frame_control.b.direction) {    // only handle server->client (i.e. device->coordinator)
-      if (_wasbroadcast) {                // only update for broadcast messages since we don't see unicast from device to device and we wouldn't know the target
-        sendHueUpdate(BAD_SHORTADDR, _groupaddr, _cluster_id);
+  // Check if debounce is active and if the packet is a duplicate
+  Z_Device & device = zigbee_devices.getShortAddr(_srcaddr);
+  if ((device.debounce_endpoint != 0) && (device.debounce_endpoint == _srcendpoint) && (device.debounce_transact == _transact_seq)) {
+    // this is a duplicate, drop the packet
+    AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_ZIGBEE "Discarding duplicate command from 0x%04X, endpoint %d"), _srcaddr, _srcendpoint);
+  } else {
+    // reset the duplicate marker, parse the packet normally, and set a timer to reset the marker later (which will discard any existing timer for the same device/endpoint)
+    device.debounce_endpoint = _srcendpoint;
+    device.debounce_transact = _transact_seq;
+    zigbee_devices.setTimer(_srcaddr, 0 /* groupaddr */, USE_ZIGBEE_DEBOUNCE_COMMANDS, 0 /*clusterid*/, _srcendpoint, Z_CAT_DEBOUNCE_CMD, 0, &Z_ResetDebounce);
+
+    convertClusterSpecific(attr_list, _cluster_id, _cmd_id, _frame_control.b.direction, _srcaddr, _srcendpoint, _payload);
+    if (!Settings.flag5.zb_disable_autoquery) {
+    // read attributes unless disabled
+      if (!_frame_control.b.direction) {    // only handle server->client (i.e. device->coordinator)
+        if (_wasbroadcast) {                // only update for broadcast messages since we don't see unicast from device to device and we wouldn't know the target
+          sendHueUpdate(BAD_SHORTADDR, _groupaddr, _cluster_id);
+        }
       }
     }
+  }
+  // Send Default Response to acknowledge the attribute reporting
+  if (0 == _frame_control.b.disable_def_resp) {
+    // the device expects a default response
+    ZCLMessage zcl(2);   // message is 4 bytes
+    zcl.shortaddr = _srcaddr;
+    zcl.cluster = _cluster_id;
+    zcl.endpoint = _srcendpoint;
+    zcl.cmd = ZCL_DEFAULT_RESPONSE;
+    zcl.manuf = _manuf_code;
+    zcl.clusterSpecific = false;  /* not cluster specific */
+    zcl.needResponse = false;     /* noresponse */
+    zcl.direct = true;            /* direct no retry */
+    zcl.setTransac(_transact_seq);
+    zcl.buf.add8(_cmd_id);
+    zcl.buf.add8(0x00);   // Status = OK
+    zigbeeZCLSendCmd(zcl);
   }
 }
 
@@ -1624,7 +1691,7 @@ void ZCLFrame::parseClusterSpecificCommand(Z_attribute_list& attr_list) {
 void ZCLFrame::syntheticAnalogValue(Z_attribute_list &attr_list, class Z_attribute &attr) {
   const char * modelId_c = zigbee_devices.getModelId(_srcaddr);  // null if unknown
   String modelId((char*) modelId_c);
-  
+
   if (modelId.startsWith(F("lumi.sensor_cube"))) {
     attr.setKeyId(0x000C, 0xFF55);    // change to AqaraRotate
   }
@@ -1671,6 +1738,10 @@ void ZCLFrame::syntheticAqaraSensor(Z_attribute_list &attr_list, class Z_attribu
         } else if (modelId.startsWith(F("lumi.sensor_smoke"))) {   // gas leak
           if (0x64 == attrid) {
             attr_list.addAttributePMEM(PSTR("SmokeDensity")).copyVal(attr);
+          }
+        } else if (modelId.startsWith(F("lumi.sensor_wleak"))) {   // gas leak
+          if (0x64 == attrid) {
+            attr_list.addAttributePMEM(PSTR("Water")).copyVal(attr);
           }
         } else if (modelId.startsWith(F("lumi.sensor_natgas"))) {   // gas leak
           if (0x64 == attrid) {
@@ -1799,33 +1870,48 @@ void ZCLFrame::syntheticAqaraCubeOrButton(class Z_attribute_list &attr_list, cla
     //     presentValue = x + 512 = double tap while side x is on top
   } else if (modelId.startsWith(F("lumi.remote")) || modelId.startsWith(F("lumi.sensor_swit"))) {   // only for Aqara buttons WXKG11LM & WXKG12LM, 'swit' because of #9923
     int32_t val = attr.getInt();
-    const __FlashStringHelper *aqara_click = F("click");
-    const __FlashStringHelper *aqara_action = F("action");
+    const __FlashStringHelper *aqara_click = F("click");    // deprecated
+    const __FlashStringHelper *aqara_action = F("action");  // deprecated
+    Z_attribute & attr_click = attr_list.addAttribute(PSTR("Click"), true);
 
     switch (val) {
       case 0:
-        attr_list.addAttribute(aqara_action).setStr(PSTR("hold"));
+        attr_list.addAttribute(aqara_action).setStr(PSTR("hold"));            // deprecated
+        attr_click.setStr(PSTR("hold"));
         break;
       case 1:
-        attr_list.addAttribute(aqara_click).setStr(PSTR("single"));
+        attr_list.addAttribute(aqara_click).setStr(PSTR("single"));            // deprecated
+        attr_click.setStr(PSTR("single"));
         break;
       case 2:
-        attr_list.addAttribute(aqara_click).setStr(PSTR("double"));
+        attr_list.addAttribute(aqara_click).setStr(PSTR("double"));            // deprecated
+        attr_click.setStr(PSTR("double"));
+        break;
+      case 3:
+        attr_click.setStr(PSTR("triple"));
+        break;
+      case 4:
+        attr_click.setStr(PSTR("quadruple"));
         break;
       case 16:
-        attr_list.addAttribute(aqara_action).setStr(PSTR("hold"));
+        attr_list.addAttribute(aqara_action).setStr(PSTR("hold"));            // deprecated
+        attr_click.setStr(PSTR("hold"));
         break;
       case 17:
-        attr_list.addAttribute(aqara_action).setStr(PSTR("release"));
+        attr_list.addAttribute(aqara_action).setStr(PSTR("release"));            // deprecated
+        attr_click.setStr(PSTR("release"));
         break;
       case 18:
-        attr_list.addAttribute(aqara_action).setStr(PSTR("shake"));
+        attr_list.addAttribute(aqara_action).setStr(PSTR("shake"));            // deprecated
+        attr_click.setStr(PSTR("shake"));
         break;
       case 255:
-        attr_list.addAttribute(aqara_action).setStr(PSTR("release"));
+        attr_list.addAttribute(aqara_action).setStr(PSTR("release"));            // deprecated
+        attr_click.setStr(PSTR("release"));
         break;
       default:
         attr_list.addAttribute(aqara_click).setUInt(val);
+        attr_click.setStr(PSTR("release"));
         break;
     }
   }
@@ -1863,7 +1949,7 @@ void ZCLFrame::syntheticAqaraVibration(class Z_attribute_list &attr_list, class 
           y = buf2.get16(2);
           x = buf2.get16(4);
           char temp[32];
-          snprintf_P(temp, sizeof(temp), "[%i,%i,%i]", x, y, z);
+          snprintf_P(temp, sizeof(temp), PSTR("[%i,%i,%i]"), x, y, z);
           attr.setStrRaw(temp);
           // calculate angles
           float X = x;
@@ -1872,7 +1958,7 @@ void ZCLFrame::syntheticAqaraVibration(class Z_attribute_list &attr_list, class 
           int32_t Angle_X = 0.5f + atanf(X/sqrtf(z*z+y*y)) * f_180pi;
           int32_t Angle_Y = 0.5f + atanf(Y/sqrtf(x*x+z*z)) * f_180pi;
           int32_t Angle_Z = 0.5f + atanf(Z/sqrtf(x*x+y*y)) * f_180pi;
-          snprintf_P(temp, sizeof(temp), "[%i,%i,%i]", Angle_X, Angle_Y, Angle_Z);
+          snprintf_P(temp, sizeof(temp), PSTR("[%i,%i,%i]"), Angle_X, Angle_Y, Angle_Z);
           attr_list.addAttributePMEM(PSTR("AqaraAngles")).setStrRaw(temp);
         }
       }
@@ -1915,7 +2001,7 @@ void Z_postProcessAttributes(uint16_t shortaddr, uint16_t src_ep, class Z_attrib
       uint8_t map_offset = 0;
       uint8_t zigbee_type = Znodata;
       int8_t conv_multiplier;
-      for (uint32_t i = 0; i < ARRAY_SIZE(Z_PostProcess); i++) {
+      for (uint32_t i = 0; i < nitems(Z_PostProcess); i++) {
         const Z_AttributeConverter *converter = &Z_PostProcess[i];
         uint16_t conv_cluster = CxToCluster(pgm_read_byte(&converter->cluster_short));
         uint16_t conv_attribute = pgm_read_word(&converter->attribute);
@@ -2006,7 +2092,7 @@ void Z_postProcessAttributes(uint16_t shortaddr, uint16_t src_ep, class Z_attrib
 // Internal search function
 void Z_parseAttributeKey_inner(class Z_attribute & attr, uint16_t preferred_cluster) {
   // scan attributes to find by name, and retrieve type
-  for (uint32_t i = 0; i < ARRAY_SIZE(Z_PostProcess); i++) {
+  for (uint32_t i = 0; i < nitems(Z_PostProcess); i++) {
     const Z_AttributeConverter *converter = &Z_PostProcess[i];
     uint16_t local_attr_id = pgm_read_word(&converter->attribute);
     uint16_t local_cluster_id = CxToCluster(pgm_read_byte(&converter->cluster_short));
@@ -2095,7 +2181,7 @@ bool Z_parseAttributeKey(class Z_attribute & attr, uint16_t preferred_cluster) {
 void Z_Data::toAttributes(Z_attribute_list & attr_list) const {
   Z_Data_Type type = getType();
   // iterate through attributes to see which ones need to be exported
-  for (uint32_t i = 0; i < ARRAY_SIZE(Z_PostProcess); i++) {
+  for (uint32_t i = 0; i < nitems(Z_PostProcess); i++) {
     const Z_AttributeConverter *converter = &Z_PostProcess[i];
     uint8_t conv_export = pgm_read_byte(&converter->multiplier_idx) & Z_EXPORT_DATA;
     uint8_t conv_mapping = pgm_read_byte(&converter->mapping);
@@ -2141,15 +2227,67 @@ void Z_Data::toAttributes(Z_attribute_list & attr_list) const {
   }
 }
 
+// Add both attributes RGB and RGBb based on the inputs
+// r,g,b are expected to be 100% brightness
+// brightness is expected 0..255
+void Z_Data_Light::toRGBAttributesRGBb(Z_attribute_list & attr_list, uint8_t r, uint8_t g, uint8_t b, uint8_t brightness) {
+  SBuffer rgb(3);
+  rgb.add8(r);
+  rgb.add8(g);
+  rgb.add8(b);
+  attr_list.addAttribute(PSTR("RGB"), true).setBuf(rgb, 0, 3);
+  // now blend with brightness
+  r = changeUIntScale(r, 0, 255, 0, brightness);
+  g = changeUIntScale(g, 0, 255, 0, brightness);
+  b = changeUIntScale(b, 0, 255, 0, brightness);
+  rgb.set8(0, r);
+  rgb.set8(1, g);
+  rgb.set8(2, b);
+  attr_list.addAttribute(PSTR("RGBb"), true).setBuf(rgb, 0, 3);
+}
+
+// Convert from Hue/Sat + Brightness to RGB+RGBb
+// sat: 0..255
+// hue: 0..359
+// brightness: 0..255
+void Z_Data_Light::toRGBAttributesHSB(Z_attribute_list & attr_list, uint16_t hue, uint8_t sat, uint8_t brightness) {
+  uint8_t r,g,b;
+  HsToRgb(hue, sat, &r, &g, &b);
+  Z_Data_Light::toRGBAttributesRGBb(attr_list, r, g, b, brightness);
+}
+
+// Convert X/Y to RGB and RGBb
+// X: 0..65535
+// Y: 0..65535
+// brightness: 0..255
+void Z_Data_Light::toRGBAttributesXYB(Z_attribute_list & attr_list, uint16_t x, uint16_t y, uint8_t brightness) {
+  uint8_t r,g,b;
+  XyToRgb(x / 65535.0f, y / 65535.0f, &r, &g, &b);
+  Z_Data_Light::toRGBAttributesRGBb(attr_list, r, g, b, brightness);
+}
+
+void Z_Data_Light::toRGBAttributes(Z_attribute_list & attr_list) const {
+  uint8_t brightness = 255;
+  if (validDimmer()) {
+    brightness = changeUIntScale(getDimmer(), 0, 254, 0, 255);   // range is 0..255
+  }
+  if (validHue() && validSat()) {
+    uint8_t sat = changeUIntScale(getSat(), 0, 254, 0, 255);
+    Z_Data_Light::toRGBAttributesHSB(attr_list, getHue(), sat, brightness);
+  } else if (validX() && validY()) {
+    Z_Data_Light::toRGBAttributesXYB(attr_list, getX(), getY(), brightness);
+  }
+}
+
 //
 // Check if this device needs Battery reporting
-// This is usefule for IKEA device that tend to drain battery quickly when Battery reporting is set
+// This is useful for IKEA or Philips devices that tend to drain battery quickly when Battery reporting is set
 //
 bool Z_BatteryReportingDeviceSpecific(uint16_t shortaddr) {
   const Z_Device & device = zigbee_devices.findShortAddr(shortaddr);
   if (device.manufacturerId) {
     String manuf_c(device.manufacturerId);
-    if (manuf_c.startsWith(F("IKEA"))) {
+    if ((manuf_c.startsWith(F("IKEA"))) || (manuf_c.startsWith(F("Philips")))) {
       return false;
     }
   }

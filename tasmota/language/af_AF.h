@@ -1,7 +1,7 @@
 /*
   af_AF.h - localization for Afrikaans - Afrikaans for Tasmota
 
-  Copyright (C) 2020  Christiaan Heerze
+  Copyright (C) 2021  Christiaan Heerze
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
  * Use online command StateText to translate ON, OFF, HOLD and TOGGLE.
  * Use online command Prefix to translate cmnd, stat and tele.
  *
- * Updated until v9.2.1.0
+ * Updated until v9.3.1.1
 \*********************************************************************/
 
 //#define LANGUAGE_MODULE_NAME         // Enable to display "Module Generic" (ie Spanish), Disable to display "Generic Module" (ie English)
@@ -100,6 +100,7 @@
 #define D_FALSE "Onwaar"
 #define D_FILE "Lêer"
 #define D_FLOW_RATE "Vloeitempo"
+#define D_FRAGMENTATION "frag."      // Lower case abbreviated version of fragmentation used in "memory fragmentation"
 #define D_FREE_MEMORY "Vrye geheue"
 #define D_PSR_MAX_MEMORY "PS-RAM geheue"
 #define D_PSR_FREE_MEMORY "PS-RAM vrye geheue"
@@ -243,8 +244,8 @@
 #define D_WEBSERVER_STOPPED "Webbediener gestop"
 #define D_FILE_NOT_FOUND "Lêer nie gevind nie"
 #define D_REDIRECTED "Herlei na captive portal"
-#define D_WIFIMANAGER_SET_ACCESSPOINT_AND_STATION "Wifimanager stel AccessPoint in en hou Station"
-#define D_WIFIMANAGER_SET_ACCESSPOINT "Wifimanager het AccessPoint ingestel"
+#define D_WIFIMANAGER_SET_ACCESSPOINT_AND_STATION "WiFi manager stel AccessPoint in en hou Station"
+#define D_WIFIMANAGER_SET_ACCESSPOINT "WiFi manager het AccessPoint ingestel"
 #define D_TRYING_TO_CONNECT "Probeer om toestel aan netwerk te koppel"
 
 #define D_RESTART_IN "Begin weer binne"
@@ -257,16 +258,16 @@
 #define D_CONSOLE "Konsole"
 #define D_CONFIRM_RESTART "Bevestig weer te begin"
 
-#define D_CONFIGURE_MODULE "Stel module in"
+#define D_CONFIGURE_MODULE "Stel Module in"
 #define D_CONFIGURE_WIFI "Stel WiFi in"
 #define D_CONFIGURE_MQTT "Stel MQTT in"
 #define D_CONFIGURE_DOMOTICZ "Stel Domoticz in"
-#define D_CONFIGURE_LOGGING "Stel logging in"
-#define D_CONFIGURE_OTHER "Stel ander in"
+#define D_CONFIGURE_LOGGING "Stel Logging in"
+#define D_CONFIGURE_OTHER "Stel Ander in"
 #define D_CONFIRM_RESET_CONFIGURATION "Bevestig die herstel van die konfigurasie"
 #define D_RESET_CONFIGURATION "Stel die konfigurasie terug"
 #define D_BACKUP_CONFIGURATION "Rugsteun die konfigurasie"
-#define D_RESTORE_CONFIGURATION "Stel die konfigurasie terug"
+#define D_RESTORE_CONFIGURATION "Herstel die konfigurasie"
 #define D_MAIN_MENU "Hoofkieslys"
 
 #define D_MODULE_PARAMETERS "Moduleparameters"
@@ -277,8 +278,8 @@
 #define D_SERIAL_IN "Serial in"
 #define D_SERIAL_OUT "Serial uit"
 
-#define D_WIFI_PARAMETERS "Wifi-parameters"
-#define D_SCAN_FOR_WIFI_NETWORKS "Soek vir wifi-netwerke"
+#define D_WIFI_PARAMETERS "WiFi parameters"
+#define D_SCAN_FOR_WIFI_NETWORKS "Soek vir WiFi netwerke"
 #define D_SCAN_DONE "Skandering gedoen"
 #define D_NO_NETWORKS_FOUND "Geen netwerke gevind nie"
 #define D_REFRESH_TO_SCAN_AGAIN "Verfris om weer te skandeer"
@@ -426,7 +427,7 @@
 #define D_DOMOTICZ_UPDATE_TIMER "Dateer tydopdatering op"
 
 // xdrv_09_timers.ino
-#define D_CONFIGURE_TIMER "Stel timer in"
+#define D_CONFIGURE_TIMER "Stel Timer in"
 #define D_TIMER_PARAMETERS "Timer-parameters"
 #define D_TIMER_ENABLE "Aktiveer timers"
 #define D_TIMER_ARM "Aktiveer"
@@ -629,18 +630,27 @@
 #define D_SENSOR_SBR_TX        "SerBr Tx"
 #define D_SENSOR_SR04_TRIG     "SR04 Tri/TX"
 #define D_SENSOR_SR04_ECHO     "SR04 Ech/RX"
+#define D_SENSOR_SDM72_TX      "SDM72 Tx"
+#define D_SENSOR_SDM72_RX      "SDM72 Rx"
 #define D_SENSOR_SDM120_TX     "SDMx20 Tx"
 #define D_SENSOR_SDM120_RX     "SDMx20 Rx"
 #define D_SENSOR_SDM630_TX     "SDM630 Tx"
 #define D_SENSOR_SDM630_RX     "SDM630 Rx"
 #define D_SENSOR_WE517_TX      "WE517 Tx"
 #define D_SENSOR_WE517_RX      "WE517 Rx"
-#define D_SENSOR_TM1638_CLK    "TM16 CLK"
-#define D_SENSOR_TM1638_DIO    "TM16 DIO"
-#define D_SENSOR_TM1638_STB    "TM16 STB"
+#define D_SENSOR_TM1637_CLK    "TM1637 CLK"
+#define D_SENSOR_TM1637_DIO    "TM1637 DIO"
+#define D_SENSOR_TM1638_CLK    "TM1638 CLK"
+#define D_SENSOR_TM1638_DIO    "TM1638 DIO"
+#define D_SENSOR_TM1638_STB    "TM1638 STB"
+#define D_SENSOR_MAX7219_DIN    "MAX7219 DIN"
+#define D_SENSOR_MAX7219_CS    "MAX7219 CS"
+#define D_SENSOR_MAX7219_CLK    "MAX7219 CLK"
 #define D_SENSOR_HX711_SCK     "HX711 SCK"
 #define D_SENSOR_HX711_DAT     "HX711 DAT"
 #define D_SENSOR_FTC532        "FTC532"
+#define D_SENSOR_BS814_CLK     "BS814 CLK"
+#define D_SENSOR_BS814_DAT     "BS814 DAT"
 #define D_SENSOR_TX2X_TX       "TX2x"
 #define D_SENSOR_RFSEND        "RFstuurder"
 #define D_SENSOR_RFRECV        "RFontvanger"
@@ -667,6 +677,8 @@
 #define D_SENSOR_MCP39F5_TX    "MCP39F5 Tx"
 #define D_SENSOR_MCP39F5_RX    "MCP39F5 Rx"
 #define D_SENSOR_MCP39F5_RST   "MCP39F5 Rst"
+#define D_SENSOR_CSE7761_TX    "CSE7761 Tx"
+#define D_SENSOR_CSE7761_RX    "CSE7761 Rx"
 #define D_SENSOR_CSE7766_TX    "CSE7766 Tx"
 #define D_SENSOR_CSE7766_RX    "CSE7766 Rx"
 #define D_SENSOR_PN532_TX      "PN532 Tx"
@@ -740,6 +752,7 @@
 #define D_SENSOR_ADC_RANGE     "ADC Reekse"
 #define D_SENSOR_ADC_CT_POWER  "ADC CT Power"
 #define D_SENSOR_ADC_JOYSTICK  "ADC Joystick"
+#define D_SENSOR_ADC_PH        "ADC pH"
 #define D_GPIO_WEBCAM_PWDN     "CAM_PWDN"
 #define D_GPIO_WEBCAM_RESET    "CAM_RESET"
 #define D_GPIO_WEBCAM_XCLK     "CAM_XCLK"
@@ -761,21 +774,36 @@
 #define D_SENSOR_IEM3000_RX    "iEM3000 RX"
 #define D_SENSOR_MIEL_HVAC_TX  "MiEl HVAC Tx"
 #define D_SENSOR_MIEL_HVAC_RX  "MiEl HVAC Rx"
+#define D_SENSOR_PROJECTOR_CTRL_TX  "DLP Tx"
+#define D_SENSOR_PROJECTOR_CTRL_RX  "DLP Rx"
 #define D_SENSOR_SHELLY_DIMMER_BOOT0 "SHD Boot 0"
 #define D_SENSOR_SHELLY_DIMMER_RST_INV "SHD Herstel"
 #define D_SENSOR_RC522_RST     "RC522 Herstel"
 #define D_SENSOR_RC522_CS      "RC522 CS"
 #define D_SENSOR_NRF24_CS      "NRF24 CS"
 #define D_SENSOR_NRF24_DC      "NRF24 DC"
+#define D_SENSOR_XPT2046_CS    "XPT2046 CS"
 #define D_SENSOR_ILI9341_CS    "ILI9341 CS"
 #define D_SENSOR_ILI9341_DC    "ILI9341 DC"
 #define D_SENSOR_ILI9488_CS    "ILI9488 CS"
 #define D_SENSOR_EPAPER29_CS   "EPaper29 CS"
 #define D_SENSOR_EPAPER42_CS   "EPaper42 CS"
 #define D_SENSOR_SSD1351_CS    "SSD1351 CS"
+#define D_SENSOR_SSD1351_DC    "SSD1351 DC"
 #define D_SENSOR_RA8876_CS     "RA8876 CS"
 #define D_SENSOR_ST7789_CS     "ST7789 CS"
 #define D_SENSOR_ST7789_DC     "ST7789 DC"
+#define D_SENSOR_SSD1331_CS    "SSD1331 CS"
+#define D_SENSOR_SSD1331_DC    "SSD1331 DC"
+#define D_SENSOR_SDCARD_CS     "SDCard CS"
+#define D_SENSOR_WIEGAND_D0    "Wiegand D0"
+#define D_SENSOR_WIEGAND_D1    "Wiegand D1"
+#define D_SENSOR_NEOPOOL_TX    "NeoPool Tx"
+#define D_SENSOR_NEOPOOL_RX    "NeoPool Rx"
+#define D_SENSOR_VL53L0X_XSHUT "VL53L0X XSHUT"
+#define D_NEW_ADDRESS          "Setting address to"
+#define D_OUT_OF_RANGE         "Out of Range"
+#define D_SENSOR_DETECTED      "detected"
 
 // Units
 #define D_UNIT_AMPERE "A"
@@ -811,6 +839,7 @@
 #define D_UNIT_PARTS_PER_BILLION "ppb"
 #define D_UNIT_PARTS_PER_DECILITER "ppd"
 #define D_UNIT_PARTS_PER_MILLION "ppm"
+#define D_UNIT_MILIGRAMS_PER_LITER "mg/L"
 #define D_UNIT_PERCENT "%%"
 #define D_UNIT_PRESSURE "hPa"
 #define D_UNIT_SECOND "sec"
@@ -822,7 +851,9 @@
 #define D_UNIT_WATTHOUR "Wh"
 #define D_UNIT_WATT_METER_QUADRAT "W/m²"
 
-//SDM220, SDM120, LE01MR
+//SDM220, SDM120, SDM72, LE01MR
+#define D_EXPORT_POWER    "Uitvoer krag"
+#define D_IMPORT_POWER 	  "Invoer krag"
 #define D_PHASE_ANGLE     "Fasehoek"
 #define D_IMPORT_ACTIVE   "Invoer aktief"
 #define D_EXPORT_ACTIVE   "Uitvoer aktief"
@@ -861,7 +892,7 @@
 #define D_CONFIGURE_SCRIPT     "Wysig skrif"
 #define D_SCRIPT               "wysig skrif"
 #define D_SDCARD_UPLOAD        "lêer oplaai"
-#define D_SDCARD_DIR           "sd card directory"
+#define D_UFSDIR               "ufs vouer"
 #define D_UPL_DONE             "Klaar"
 #define D_SCRIPT_CHARS_LEFT    "karakters oor"
 #define D_SCRIPT_CHARS_NO_MORE "nie meer karakters nie"
@@ -869,6 +900,11 @@
 #define D_SCRIPT_ENABLE        "skrip inskakel"
 #define D_SCRIPT_UPLOAD        "Laai op"
 #define D_SCRIPT_UPLOAD_FILES  "Laai lêers op"
+
+//xdrv_50_filesystem.ino
+#define D_MANAGE_FILE_SYSTEM   "Bestuur lêerstelsel"
+#define D_FS_SIZE              "Grootte"
+#define D_FS_FREE              "Vry"
 
 //xsns_67_as3935.ino
 #define D_AS3935_GAIN "versterking:"
@@ -941,5 +977,57 @@
 #define D_FP_ADDRCODE "Adres kode"           // 0x20 Address code
 #define D_FP_PASSVERIFY "Wagwoord geverifieer"    // 0x21 Verify the fingerprint passed
 #define D_FP_UNKNOWNERROR "Fout"              // Any other error
+
+// xsns_83_neopool.ino
+#define D_NEOPOOL_MACH_NONE               "NeoPool"           // Machine names
+#define D_NEOPOOL_MACH_HIDROLIFE          "Hidrolife (geel)"
+#define D_NEOPOOL_MACH_AQUASCENIC         "Aquascenic (blou)"
+#define D_NEOPOOL_MACH_OXILIFE            "Oxilife (groen)"
+#define D_NEOPOOL_MACH_BIONET             "Bionet (ligblou)"
+#define D_NEOPOOL_MACH_HIDRONISER         "Hidroniser (rooi)"
+#define D_NEOPOOL_MACH_UVSCENIC           "UVScenic (sering)"
+#define D_NEOPOOL_MACH_STATION            "Station (oranje)"
+#define D_NEOPOOL_MACH_BRILIX             "Brilix"
+#define D_NEOPOOL_MACH_GENERIC            "Generic"
+#define D_NEOPOOL_MACH_BAYROL             "Bayrol"
+#define D_NEOPOOL_MACH_HAY                "Hay"
+#define D_NEOPOOL_FILTRATION_MANUAL       "Handmatig"            // Filtration modes
+#define D_NEOPOOL_FILTRATION_AUTO         "Outomaties"
+#define D_NEOPOOL_FILTRATION_HEATING      "Verhitting"
+#define D_NEOPOOL_FILTRATION_SMART        "Slim"
+#define D_NEOPOOL_FILTRATION_INTELLIGENT  "Intelligent"
+#define D_NEOPOOL_FILTRATION_BACKWASH     "Terugspoel"
+#define D_NEOPOOL_FILTRATION_NONE         ""                  // Filtration speed level
+#define D_NEOPOOL_FILTRATION_SLOW         "stadig"
+#define D_NEOPOOL_FILTRATION_MEDIUM       "medium"
+#define D_NEOPOOL_FILTRATION_FAST         "vinnig"
+#define D_NEOPOOL_TYPE                    "Tipe"              // Sensor & relais names
+#define D_NEOPOOL_REDOX                   "Redoks"
+#define D_NEOPOOL_CHLORINE                "Chloor"
+#define D_NEOPOOL_CONDUCTIVITY            "Geleidingsvermoë"
+#define D_NEOPOOL_IONIZATION              "Ionisering"
+#define D_NEOPOOL_HYDROLYSIS              "Hidrolise"
+#define D_NEOPOOL_RELAY                   "Relais"
+#define D_NEOPOOL_RELAY_FILTRATION        "Filtrasie"
+#define D_NEOPOOL_RELAY_LIGHT             "Lig"
+#define D_NEOPOOL_RELAY_PH_ACID           "Suurpomp"
+#define D_NEOPOOL_RELAY_PH_BASE           "Basispump"
+#define D_NEOPOOL_RELAY_RX                "Redoksvlak"
+#define D_NEOPOOL_RELAY_CL                "Chloorpomp"
+#define D_NEOPOOL_RELAY_CD                "Pekelwaterpomp"
+#define D_NEOPOOL_TIME                    "Tyd"
+#define D_NEOPOOL_FILT_MODE               "Filtrasie"
+#define D_NEOPOOL_POLARIZATION            "Pol"               // Sensor status
+#define D_NEOPOOL_PR_OFF                  "PrOff"
+#define D_NEOPOOL_SETPOINT_OK             "Oké"
+#define D_NEOPOOL_COVER                   "Voorblad"
+#define D_NEOPOOL_SHOCK                   "Skok"
+#define D_NEOPOOL_ALARM                   "! "
+#define D_NEOPOOL_LOW                     "Laag"
+#define D_NEOPOOL_FLOW1                   "FL1"
+#define D_NEOPOOL_FLOW2                   "FL2"
+#define D_NEOPOOL_PH_HIGH                 "te hoog"          // ph Alarms
+#define D_NEOPOOL_PH_LOW                  "te laag"
+#define D_NEOPOOL_PUMP_TIME_EXCEEDED      "pomptyd oorskry"
 
 #endif  // _LANGUAGE_AF_AF_H_
